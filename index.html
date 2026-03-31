@@ -992,7 +992,7 @@
         updateUILang();
         updateRegisterLang();
     };
-    function toggleTheme() { document.body.classList.toggle('light-theme'); }
+    function toggleTheme() { document.body.classList.toggle('light-theme'); render(); }
     themeBtn.onclick = toggleTheme;
 
     // Снег
@@ -1043,21 +1043,193 @@
     document.addEventListener('click', (e) => { if (!searchInput.contains(e.target) && !pairsContainer.contains(e.target)) pairsContainer.style.display = 'none'; });
     searchInput.addEventListener('input', (e) => { renderPairs(e.target.value); if (!pairsContainer.style.display || pairsContainer.style.display === 'none') pairsContainer.style.display = 'block'; });
 
-    // График
-    function setupCanvas() { const rect = canvas.parentElement.getBoundingClientRect(); canvas.width = rect.width * dpr; canvas.height = rect.height * dpr; ctx.scale(dpr, dpr); canvas.style.width = rect.width + 'px'; canvas.style.height = rect.height + 'px'; }
-    function initChart() { setupCanvas(); candles = []; let price = 100; for(let i=0; i<candleCount; i++) { let open = price; let close = price + (Math.random() - 0.5) * 15; candles.push({ open, close, high: Math.max(open, close)+Math.random()*5+3, low: Math.min(open, close)-Math.random()*5-3, progress:1 }); price = close; } calculateSMA(); render(); }
-    function calculateSMA(period=7) { smaData = []; for(let i=period-1; i<candles.length; i++) { let sum=0; for(let j=i-period+1; j<=i; j++) sum+=candles[j].close; smaData.push({ index:i, value:sum/period }); } }
-    function drawGrid(w,h,minP,maxP) { ctx.strokeStyle="#1e1e2f"; ctx.lineWidth=0.5; const levels=5; for(let i=0;i<=levels;i++){ let y=h*0.15+(h*0.7/levels)*i; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.strokeStyle=document.body.classList.contains('light-theme')?"#ccc":"#1e1e2f"; ctx.stroke(); let price=maxP-(i/levels)*(maxP-minP); ctx.fillStyle="#666"; ctx.font="8px 'Segoe UI'"; ctx.fillText(price.toFixed(2),5,y-2); } for(let i=1;i<candles.length;i++){ let x=(i/candles.length)*w; ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.strokeStyle=document.body.classList.contains('light-theme')?"#ddd":"#1a1a2a"; ctx.stroke(); } }
-    function render() { const w=canvas.width/dpr; const h=canvas.height/dpr; ctx.clearRect(0,0,w,h); const allPrices=candles.flatMap(c=>[c.high,c.low]); const minP=Math.min(...allPrices); const maxP=Math.max(...allPrices); const range=(maxP-minP)||10; const getY=(p)=>h-((p-minP)/range)*(h*0.7)-(h*0.15); drawGrid(w,h,minP,maxP); const candleWidth=w/candles.length; candles.forEach((c,i)=>{ const x=i*candleWidth+(candleWidth*0.15); const isUp=c.close>=c.open; const color=isUp?'#00ff88':'#ff4d4d'; ctx.strokeStyle=color; ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(x+(candleWidth*0.35),getY(c.high)); ctx.lineTo(x+(candleWidth*0.35),getY(c.low)); ctx.stroke(); let openY=getY(c.open); let closeY=getY(c.close); let bodyY,bodyH; if(isUp){ let currentCloseY=openY-(openY-closeY)*c.progress; bodyY=currentCloseY; bodyH=openY-currentCloseY; } else { let currentCloseY=openY+(closeY-openY)*c.progress; bodyY=openY; bodyH=currentCloseY-openY; } if(c.progress>0&&bodyH>0.5){ ctx.fillStyle=color; let rectX=x, rectY=bodyY, rectW=candleWidth*0.7, rectH=bodyH, radius=2; ctx.beginPath(); ctx.moveTo(rectX+radius,rectY); ctx.lineTo(rectX+rectW-radius,rectY); ctx.quadraticCurveTo(rectX+rectW,rectY,rectX+rectW,rectY+radius); ctx.lineTo(rectX+rectW,rectY+rectH-radius); ctx.quadraticCurveTo(rectX+rectW,rectY+rectH,rectX+rectW-radius,rectY+rectH); ctx.lineTo(rectX+radius,rectY+rectH); ctx.quadraticCurveTo(rectX,rectY+rectH,rectX,rectY+rectH-radius); ctx.lineTo(rectX,rectY+radius); ctx.quadraticCurveTo(rectX,rectY,rectX+radius,rectY); ctx.closePath(); ctx.fill(); } }); if(showSMA&&smaData.length>1){ ctx.beginPath(); ctx.strokeStyle='#ffaa00'; ctx.lineWidth=2; smaData.forEach((pt,idx)=>{ let x=(pt.index/candles.length)*w+candleWidth/2; let y=getY(pt.value); if(idx===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }); ctx.stroke(); } }
-    setInterval(()=>{ if(candles.length===0 || !isActivated) return; candles.shift(); let last=candles[candles.length-1]; let nO=last.close; let nC=nO+(Math.random()-0.5)*8; let newCandle={ open:nO, close:nC, high:Math.max(nO,nC)+Math.random()*4+2, low:Math.min(nO,nC)-Math.random()*4-2, progress:0 }; candles.push(newCandle); calculateSMA(); let progress=0; function animateNew(){ progress+=0.05; newCandle.progress=Math.min(progress,1); render(); if(progress<1) requestAnimationFrame(animateNew); } animateNew(); },3000);
+    // ГРАФИК - всегда активен и рисуется, даже если доступ не активирован
+    function setupCanvas() { 
+        const rect = canvas.parentElement.getBoundingClientRect(); 
+        if(rect.width === 0 || rect.height === 0) return;
+        canvas.width = rect.width * dpr; 
+        canvas.height = rect.height * dpr; 
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.scale(dpr, dpr); 
+        canvas.style.width = rect.width + 'px'; 
+        canvas.style.height = rect.height + 'px'; 
+    }
+    
+    function initChart() { 
+        setupCanvas(); 
+        candles = []; 
+        let price = 100; 
+        for(let i=0; i<candleCount; i++) { 
+            let open = price; 
+            let close = price + (Math.random() - 0.5) * 15; 
+            candles.push({ open, close, high: Math.max(open, close)+Math.random()*5+3, low: Math.min(open, close)-Math.random()*5-3, progress:1 }); 
+            price = close; 
+        } 
+        calculateSMA(); 
+        render(); 
+    }
+    
+    function calculateSMA(period=7) { 
+        smaData = []; 
+        for(let i=period-1; i<candles.length; i++) { 
+            let sum=0; 
+            for(let j=i-period+1; j<=i; j++) sum+=candles[j].close; 
+            smaData.push({ index:i, value:sum/period }); 
+        } 
+    }
+    
+    function drawGrid(w,h,minP,maxP) { 
+        ctx.save();
+        ctx.strokeStyle = document.body.classList.contains('light-theme')?"#ccc":"#1e1e2f"; 
+        ctx.lineWidth=0.5; 
+        const levels=5; 
+        for(let i=0;i<=levels;i++){ 
+            let y=h*0.15+(h*0.7/levels)*i; 
+            ctx.beginPath(); 
+            ctx.moveTo(0,y); 
+            ctx.lineTo(w,y); 
+            ctx.stroke(); 
+            let price=maxP-(i/levels)*(maxP-minP); 
+            ctx.fillStyle= document.body.classList.contains('light-theme')?"#666":"#aaa"; 
+            ctx.font="8px 'Segoe UI'"; 
+            ctx.fillText(price.toFixed(2),5,y-2); 
+        } 
+        for(let i=1;i<candles.length;i++){ 
+            let x=(i/candles.length)*w; 
+            ctx.beginPath(); 
+            ctx.moveTo(x,0); 
+            ctx.lineTo(x,h); 
+            ctx.strokeStyle=document.body.classList.contains('light-theme')?"#ddd":"#1a1a2a"; 
+            ctx.stroke(); 
+        }
+        ctx.restore();
+    }
+    
+    function render() { 
+        if(!canvas || !ctx) return;
+        const w=canvas.width/dpr; 
+        const h=canvas.height/dpr; 
+        if(w <= 0 || h <= 0) return;
+        ctx.clearRect(0,0,w,h); 
+        if(candles.length === 0) {
+            ctx.fillStyle = "#888";
+            ctx.font = "12px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("Loading chart...", w/2, h/2);
+            return;
+        }
+        const allPrices=candles.flatMap(c=>[c.high,c.low]); 
+        const minP=Math.min(...allPrices); 
+        const maxP=Math.max(...allPrices); 
+        const range=(maxP-minP)||10; 
+        const getY=(p)=>h-((p-minP)/range)*(h*0.7)-(h*0.15); 
+        drawGrid(w,h,minP,maxP); 
+        const candleWidth=w/candles.length; 
+        candles.forEach((c,i)=>{ 
+            const x=i*candleWidth+(candleWidth*0.15); 
+            const isUp=c.close>=c.open; 
+            const color=isUp?'#00ff88':'#ff4d4d'; 
+            ctx.strokeStyle=color; 
+            ctx.lineWidth=1.5; 
+            ctx.beginPath(); 
+            ctx.moveTo(x+(candleWidth*0.35),getY(c.high)); 
+            ctx.lineTo(x+(candleWidth*0.35),getY(c.low)); 
+            ctx.stroke(); 
+            let openY=getY(c.open); 
+            let closeY=getY(c.close); 
+            let bodyY,bodyH; 
+            if(isUp){ 
+                let currentCloseY=openY-(openY-closeY)*c.progress; 
+                bodyY=currentCloseY; 
+                bodyH=openY-currentCloseY; 
+            } else { 
+                let currentCloseY=openY+(closeY-openY)*c.progress; 
+                bodyY=openY; 
+                bodyH=currentCloseY-openY; 
+            } 
+            if(c.progress>0&&bodyH>0.5){ 
+                ctx.fillStyle=color; 
+                let rectX=x, rectY=bodyY, rectW=candleWidth*0.7, rectH=bodyH, radius=2; 
+                ctx.beginPath(); 
+                ctx.moveTo(rectX+radius,rectY); 
+                ctx.lineTo(rectX+rectW-radius,rectY); 
+                ctx.quadraticCurveTo(rectX+rectW,rectY,rectX+rectW,rectY+radius); 
+                ctx.lineTo(rectX+rectW,rectY+rectH-radius); 
+                ctx.quadraticCurveTo(rectX+rectW,rectY+rectH,rectX+rectW-radius,rectY+rectH); 
+                ctx.lineTo(rectX+radius,rectY+rectH); 
+                ctx.quadraticCurveTo(rectX,rectY+rectH,rectX,rectY+rectH-radius); 
+                ctx.lineTo(rectX,rectY+radius); 
+                ctx.quadraticCurveTo(rectX,rectY,rectX+radius,rectY); 
+                ctx.closePath(); 
+                ctx.fill(); 
+            } 
+        }); 
+        if(showSMA&&smaData.length>1){ 
+            ctx.beginPath(); 
+            ctx.strokeStyle='#ffaa00'; 
+            ctx.lineWidth=2; 
+            smaData.forEach((pt,idx)=>{ 
+                let x=(pt.index/candles.length)*w+candleWidth/2; 
+                let y=getY(pt.value); 
+                if(idx===0) ctx.moveTo(x,y); 
+                else ctx.lineTo(x,y); 
+            }); 
+            ctx.stroke(); 
+        } 
+    }
+    
+    // Обновление свечей всегда работает (график живой)
+    setInterval(()=>{ 
+        if(candles.length === 0) return; 
+        candles.shift(); 
+        let last=candles[candles.length-1]; 
+        let nO=last.close; 
+        let nC=nO+(Math.random()-0.5)*8; 
+        let newCandle={ open:nO, close:nC, high:Math.max(nO,nC)+Math.random()*4+2, low:Math.min(nO,nC)-Math.random()*4-2, progress:0 }; 
+        candles.push(newCandle); 
+        calculateSMA(); 
+        let progress=0; 
+        function animateNew(){ 
+            progress+=0.05; 
+            newCandle.progress=Math.min(progress,1); 
+            render(); 
+            if(progress<1) requestAnimationFrame(animateNew); 
+        } 
+        animateNew(); 
+    },3000);
+    
     function zoomIn(){ if(candleCount>5) candleCount-=2; initChart(); }
     function zoomOut(){ if(candleCount<30) candleCount+=2; initChart(); }
     window.zoomIn=zoomIn; window.zoomOut=zoomOut;
     function toggleSMA(){ showSMA=!showSMA; smaBtn.classList.toggle('active',showSMA); render(); }
     window.toggleSMA=toggleSMA;
-    canvas.addEventListener('mousemove',(e)=>{ if(!isActivated) return; const rect=canvas.getBoundingClientRect(); const scaleX=canvas.width/rect.width; const x=(e.clientX-rect.left)*scaleX/dpr; const candleWidth=(canvas.width/dpr)/candles.length; const idx=Math.floor(x/candleWidth); if(idx>=0&&idx<candles.length){ const c=candles[idx]; document.getElementById('tooltip').style.display='block'; document.getElementById('tooltip').style.left=e.pageX+10+'px'; document.getElementById('tooltip').style.top=e.pageY-20+'px'; document.getElementById('tooltip').innerHTML=`O: ${c.open.toFixed(2)} H: ${c.high.toFixed(2)} L: ${c.low.toFixed(2)} C: ${c.close.toFixed(2)}`; } else document.getElementById('tooltip').style.display='none'; });
+    canvas.addEventListener('mousemove',(e)=>{ 
+        if(!isActivated) return; 
+        const rect=canvas.getBoundingClientRect(); 
+        const scaleX=canvas.width/rect.width; 
+        const x=(e.clientX-rect.left)*scaleX/dpr; 
+        const candleWidth=(canvas.width/dpr)/candles.length; 
+        const idx=Math.floor(x/candleWidth); 
+        if(idx>=0&&idx<candles.length){ 
+            const c=candles[idx]; 
+            document.getElementById('tooltip').style.display='block'; 
+            document.getElementById('tooltip').style.left=e.pageX+10+'px'; 
+            document.getElementById('tooltip').style.top=e.pageY-20+'px'; 
+            document.getElementById('tooltip').innerHTML=`O: ${c.open.toFixed(2)} H: ${c.high.toFixed(2)} L: ${c.low.toFixed(2)} C: ${c.close.toFixed(2)}`; 
+        } else document.getElementById('tooltip').style.display='none'; 
+    });
     canvas.addEventListener('mouseleave',()=>document.getElementById('tooltip').style.display='none');
-    function changePair(){ canvas.style.opacity='0.3'; setTimeout(()=>{ initChart(); canvas.style.opacity='1'; document.querySelectorAll('.pair-option').forEach(el=>{ if(el.querySelector('.pair-name')?.innerText===hiddenSelect.value) el.classList.add('selected'); else el.classList.remove('selected'); }); },500); }
+    function changePair(){ 
+        canvas.style.opacity='0.3'; 
+        setTimeout(()=>{ 
+            initChart(); 
+            canvas.style.opacity='1'; 
+            document.querySelectorAll('.pair-option').forEach(el=>{ 
+                if(el.querySelector('.pair-name')?.innerText===hiddenSelect.value) el.classList.add('selected'); 
+                else el.classList.remove('selected'); 
+            }); 
+        },500); 
+    }
     window.changePair=changePair;
 
     function startAnalysis(btn){ 
@@ -1095,7 +1267,7 @@
     window.selectTf = selectTf;
     if(window.Telegram?.WebApp) window.Telegram.WebApp.expand();
 
-    // ---------- ИСПРАВЛЕННЫЙ СТАРТ: Выбор языка и переход ----------
+    // ---------- СТАРТ: выбор языка, отображение графика всегда ----------
     let selectedLanguage = null;
     langItems.forEach(item => {
         item.addEventListener('click', () => {
@@ -1108,39 +1280,54 @@
     
     startBtn.addEventListener('click', () => {
         if (!selectedLanguage) {
-            // Если язык не выбран, выбираем английский по умолчанию
             selectedLanguage = 'en';
             const defaultItem = document.querySelector('.language-item[data-lang="en"]');
             if(defaultItem) defaultItem.classList.add('selected');
         }
         curLang = selectedLanguage;
-        // Обновляем интерфейс и переводы
         updateUILang();
         updateRegisterLang();
-        // Меняем текст кнопки перевода языка в шапке
         langBtn.innerHTML = `${dict[curLang].flag} ${curLang.toUpperCase()}`;
         
         welcomeOverlay.classList.remove('visible');
         mainApp.style.display = 'flex';
         
-        if(isActivated) {
-            initChart();
-            setupSnow();
-        } else {
-            setupCanvas();
-            ctx.fillStyle = 'rgba(0,0,0,0.5)';
-            ctx.fillRect(0, 0, canvas.width/dpr, canvas.height/dpr);
-            ctx.fillStyle = 'white';
-            ctx.font = '12px sans-serif';
-            ctx.textAlign = 'center';
-            let notActiveText = dict[curLang].wait === "Waiting..." ? "🔐 Activation required" : "🔐 Требуется активация";
-            ctx.fillText(notActiveText, (canvas.width/dpr)/2, (canvas.height/dpr)/2);
-            ctx.fillText(dict[curLang].an + " → Activate", (canvas.width/dpr)/2, (canvas.height/dpr)/2 + 25);
-            setupSnow();
-        }
+        // ВСЕГДА инициализируем график независимо от активации
+        initChart();
+        setupSnow();
+        
+        // Наполняем список пар
         allPairs.forEach(p => { const option = document.createElement('option'); option.value = p.name; option.text = p.name; hiddenSelect.appendChild(option); });
         if(allPairs.length > 0) { hiddenSelect.value = allPairs[0].name; searchInput.value = allPairs[0].name; }
         renderPairs();
+        
+        // Если доступ не активирован, поверх графика рисуем лёгкую подсказку, но сам график работает
+        if(!isActivated) {
+            // Не блокируем обновление графика, просто оверлей с текстом, но это не мешает свечам.
+            // Для эстетики нарисуем полупрозрачный слой при следующем рендере (можно через setInterval, но добавим простую анимацию)
+            const overlayMsg = () => {
+                if(!isActivated && candles.length > 0) {
+                    ctx.save();
+                    ctx.globalAlpha = 0.7;
+                    ctx.fillStyle = document.body.classList.contains('light-theme') ? "#00000088" : "#ffffff88";
+                    ctx.fillRect(0, 0, canvas.width/dpr, canvas.height/dpr);
+                    ctx.globalAlpha = 1;
+                    ctx.fillStyle = "#ffaa44";
+                    ctx.font = "bold 12px sans-serif";
+                    ctx.textAlign = "center";
+                    ctx.fillText("🔐 " + dict[curLang].an + " → Activate", (canvas.width/dpr)/2, (canvas.height/dpr)/2);
+                    ctx.restore();
+                }
+            };
+            // не перекрываем полностью, но даём знать
+            const origRender = render;
+            window.render = function() {
+                origRender();
+                if(!isActivated) overlayMsg();
+            };
+            render = window.render;
+            render();
+        }
     });
 </script>
 </body>
