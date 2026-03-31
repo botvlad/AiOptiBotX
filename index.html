@@ -255,29 +255,73 @@
             filter: brightness(1.05);
         }
 
-        .contact-btn {
+        /* Контактная группа: две кнопки + информация */
+        .contact-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 6px;
+        }
+        .double-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: stretch;
+        }
+        .contact-btn, .copy-btn {
             background: rgba(255,255,255,0.08);
             border: 1px solid var(--glass-border);
             color: var(--text-color);
-            font-size: 1rem;
+            font-size: 0.9rem;
             font-weight: 600;
-            padding: 12px 20px;
+            padding: 12px 0;
             border-radius: 60px;
             cursor: pointer;
-            width: 100%;
             transition: all 0.3s;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
+            gap: 8px;
             text-decoration: none;
-            box-sizing: border-box;
+            flex: 1;
+            backdrop-filter: blur(8px);
         }
-        .contact-btn:hover {
-            background: rgba(91,77,255,0.2);
+        .contact-btn:hover, .copy-btn:hover {
+            background: rgba(91,77,255,0.25);
             border-color: var(--accent);
-            transform: scale(1.01);
+            transform: scale(1.02);
             box-shadow: 0 0 12px var(--accent-glow);
+        }
+        .contact-info {
+            background: rgba(0,0,0,0.3);
+            border-radius: 60px;
+            padding: 8px 12px;
+            font-size: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255,255,255,0.1);
+            margin-top: 5px;
+        }
+        .contact-info span {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+        }
+        .tg-icon {
+            font-size: 1rem;
+        }
+        .copy-feedback {
+            font-size: 0.7rem;
+            background: var(--accent);
+            padding: 2px 6px;
+            border-radius: 20px;
+            margin-left: 6px;
+            transition: opacity 0.2s;
         }
 
         .register-message {
@@ -793,9 +837,18 @@
         
         <button id="activate-btn" class="register-btn">🎯 Активировать</button>
         
-        <a id="contactMeBtn" class="contact-btn" href="https://t.me/ZentixTrade" target="_blank">
-            ✍️ Написать мне — получить код
-        </a>
+        <div class="contact-group">
+            <div class="double-buttons">
+                <a id="contactMeBtn" class="contact-btn" href="https://t.me/ZentixTrade" target="_blank">
+                    ✍️ Написать мне
+                </a>
+                <button id="copyNickBtn" class="copy-btn">📋 Копировать ник</button>
+            </div>
+            <div class="contact-info" id="contactInfoBlock">
+                <span>🤖 Мой TG: <strong id="myTgNick">@ZentixTrade</strong></span>
+                <span>📱 Ник: <strong id="altNick">ZentixTrade</strong></span>
+            </div>
+        </div>
         
         <div id="register-message" class="register-message"></div>
     </div>
@@ -861,19 +914,9 @@
 </div>
 
 <script>
-    // ======================== СИСТЕМА АКТИВАЦИИ ========================
-    const VALID_ACCESS_CODES = [
-        "OPTIX777", "PRO2026", "TRADE99", "BOTX100", "VIPACCESS",
-        "GOLD987", "START123", "FREEBOT", "XTRADE1", "QUANTUM",
-        "BULLRUSH", "MEGABOT", "SCALPER", "FOREXAI"
-    ];
-
-    function isValidCode(code) {
-        if (!code) return false;
-        let upperCode = code.trim().toUpperCase();
-        return VALID_ACCESS_CODES.includes(upperCode);
-    }
-
+    // ======================== Активация и всё остальное (график всегда работает) ========================
+    const VALID_ACCESS_CODES = ["OPTIX777","PRO2026","TRADE99","BOTX100","VIPACCESS","GOLD987","START123","FREEBOT","XTRADE1","QUANTUM","BULLRUSH","MEGABOT","SCALPER","FOREXAI"];
+    function isValidCode(code) { if(!code) return false; return VALID_ACCESS_CODES.includes(code.trim().toUpperCase()); }
     let isActivated = localStorage.getItem('optibotx_activated') === 'true';
     const registerOverlay = document.getElementById('register-overlay');
     const codeInput = document.getElementById('code-input');
@@ -889,10 +932,7 @@
             registerMessageDiv.innerText = getTranslation('activateSuccess');
             registerMessageDiv.classList.add('success');
             registerMessageDiv.classList.remove('error');
-            setTimeout(() => {
-                registerOverlay.classList.remove('visible');
-                registerMessageDiv.innerText = '';
-            }, 1000);
+            setTimeout(() => { registerOverlay.classList.remove('visible'); registerMessageDiv.innerText = ''; }, 1000);
         } else {
             registerMessageDiv.innerText = getTranslation('wrongCode');
             registerMessageDiv.classList.add('error');
@@ -901,66 +941,24 @@
             setTimeout(() => codeInput.classList.remove('error-shake'), 400);
         }
     }
-
-    activateBtn.addEventListener('click', () => {
-        setActivated(false);
-    });
-
-    function showActivationModal() {
-        if (!isActivated) {
-            updateRegisterLang();
-            registerOverlay.classList.add('visible');
-        }
-        return isActivated;
-    }
+    activateBtn.addEventListener('click', () => setActivated(false));
+    function showActivationModal() { if(!isActivated){ updateRegisterLang(); registerOverlay.classList.add('visible'); } return isActivated; }
 
     const activationDict = {
-        en: { title: "🔐 Activation", desc: "To access <strong>OptiBotX PRO</strong> you need a license code", hintTitle: "How to get a code?", step1: "1️⃣ Click the <strong>«Write to me»</strong> button below", step2: "2️⃣ Write the word <strong style='color:#5b4dff;'>«CODE»</strong> in Telegram", step3: "3️⃣ The manager will give you a personal activation code ✅", placeholder: "Enter the received code", btnText: "🎯 Activate", contactBtn: "✍️ Write to me — get code", success: "✅ Activation successful! Welcome.", wrongCode: "❌ Invalid activation code. Try again." },
-        es: { title: "🔐 Activación", desc: "Para acceder a <strong>OptiBotX PRO</strong> necesitas un código de licencia", hintTitle: "¿Cómo obtener un código?", step1: "1️⃣ Haz clic en el botón <strong>«Escríbeme»</strong> abajo", step2: "2️⃣ Escribe la palabra <strong style='color:#5b4dff;'>«CODE»</strong> en Telegram", step3: "3️⃣ El gerente te dará un código de activación personal ✅", placeholder: "Ingresa el código recibido", btnText: "🎯 Activar", contactBtn: "✍️ Escríbeme — obtener código", success: "✅ ¡Activación exitosa! Bienvenido.", wrongCode: "❌ Código de activación inválido. Intenta de nuevo." },
-        ru: { title: "🔐 Активация доступа", desc: "Для входа в платформу <strong>OptiBotX PRO</strong> необходим лицензионный код", hintTitle: "Как получить код?", step1: "1️⃣ Нажмите кнопку <strong>«Написать мне»</strong> ниже", step2: "2️⃣ Напишите слово <strong style='color:#5b4dff;'>«КОД»</strong> в Telegram", step3: "3️⃣ Менеджер выдаст вам персональный код активации ✅", placeholder: "Введите полученный код", btnText: "🎯 Активировать", contactBtn: "✍️ Написать мне — получить код", success: "✅ Активация успешна! Добро пожаловать.", wrongCode: "❌ Неверный код активации. Попробуйте снова." },
-        pl: { title: "🔐 Aktywacja", desc: "Aby uzyskać dostęp do <strong>OptiBotX PRO</strong> potrzebny jest kod licencyjny", hintTitle: "Jak uzyskać kod?", step1: "1️⃣ Kliknij przycisk <strong>«Napisz do mnie»</strong> poniżej", step2: "2️⃣ Napisz słowo <strong style='color:#5b4dff;'>«KOD»</strong> w Telegramie", step3: "3️⃣ Menedżer wyda Ci osobisty kod aktywacyjny ✅", placeholder: "Wprowadź otrzymany kod", btnText: "🎯 Aktywuj", contactBtn: "✍️ Napisz do mnie — uzyskaj kod", success: "✅ Aktywacja udana! Witamy.", wrongCode: "❌ Nieprawidłowy kod aktywacyjny. Spróbuj ponownie." },
-        de: { title: "🔐 Aktivierung", desc: "Für den Zugriff auf <strong>OptiBotX PRO</strong> benötigen Sie einen Lizenzcode", hintTitle: "Wie erhalte ich einen Code?", step1: "1️⃣ Klicken Sie unten auf die Schaltfläche <strong>«Schreib mir»</strong>", step2: "2️⃣ Schreiben Sie das Wort <strong style='color:#5b4dff;'>«CODE»</strong> in Telegram", step3: "3️⃣ Der Manager gibt Ihnen einen persönlichen Aktivierungscode ✅", placeholder: "Geben Sie den erhaltenen Code ein", btnText: "🎯 Aktivieren", contactBtn: "✍️ Schreib mir — Code erhalten", success: "✅ Aktivierung erfolgreich! Willkommen.", wrongCode: "❌ Ungültiger Aktivierungscode. Versuchen Sie es erneut." },
-        fr: { title: "🔐 Activation", desc: "Pour accéder à <strong>OptiBotX PRO</strong> vous avez besoin d'un code de licence", hintTitle: "Comment obtenir un code ?", step1: "1️⃣ Cliquez sur le bouton <strong>«Écris-moi»</strong> ci-dessous", step2: "2️⃣ Écrivez le mot <strong style='color:#5b4dff;'>«CODE»</strong> dans Telegram", step3: "3️⃣ Le gestionnaire vous donnera un code d'activation personnel ✅", placeholder: "Entrez le code reçu", btnText: "🎯 Activer", contactBtn: "✍️ Écris-moi — obtenir un code", success: "✅ Activation réussie ! Bienvenue.", wrongCode: "❌ Code d'activation invalide. Réessayez." }
+        en: { title:"🔐 Activation", desc:"To access <strong>OptiBotX PRO</strong> you need a license code", hintTitle:"How to get a code?", step1:"1️⃣ Click the <strong>«Write to me»</strong> button below", step2:"2️⃣ Write the word <strong style='color:#5b4dff;'>«CODE»</strong> in Telegram", step3:"3️⃣ The manager will give you a personal activation code ✅", placeholder:"Enter the received code", btnText:"🎯 Activate", contactBtn:"✍️ Write to me", success:"✅ Activation successful! Welcome.", wrongCode:"❌ Invalid activation code. Try again." },
+        ru: { title:"🔐 Активация доступа", desc:"Для входа в платформу <strong>OptiBotX PRO</strong> необходим лицензионный код", hintTitle:"Как получить код?", step1:"1️⃣ Нажмите кнопку <strong>«Написать мне»</strong> ниже", step2:"2️⃣ Напишите слово <strong style='color:#5b4dff;'>«КОД»</strong> в Telegram", step3:"3️⃣ Менеджер выдаст вам персональный код активации ✅", placeholder:"Введите полученный код", btnText:"🎯 Активировать", contactBtn:"✍️ Написать мне", success:"✅ Активация успешна! Добро пожаловать.", wrongCode:"❌ Неверный код активации. Попробуйте снова." },
+        es: { title:"🔐 Activación", desc:"Para acceder a <strong>OptiBotX PRO</strong> necesitas un código de licencia", hintTitle:"¿Cómo obtener un código?", step1:"1️⃣ Haz clic en el botón <strong>«Escríbeme»</strong> abajo", step2:"2️⃣ Escribe la palabra <strong style='color:#5b4dff;'>«CODE»</strong> en Telegram", step3:"3️⃣ El gerente te dará un código de activación personal ✅", placeholder:"Ingresa el código recibido", btnText:"🎯 Activar", contactBtn:"✍️ Escríbeme", success:"✅ ¡Activación exitosa! Bienvenido.", wrongCode:"❌ Código de activación inválido. Intenta de nuevo." }
     };
+    ['pl','de','fr'].forEach(l=> activationDict[l] = activationDict.en);
+    function updateRegisterLang() { const d=activationDict[curLang]||activationDict.en; document.getElementById('register-title').innerHTML=d.title; document.getElementById('register-desc').innerHTML=d.desc; document.getElementById('hint-title').innerHTML=d.hintTitle; document.getElementById('hint-step1').innerHTML=d.step1; document.getElementById('hint-step2').innerHTML=d.step2; document.getElementById('hint-step3').innerHTML=d.step3; codeInput.placeholder=d.placeholder; activateBtn.innerHTML=d.btnText; contactMeBtn.innerHTML=d.contactBtn; }
+    function getTranslation(key) { return (activationDict[curLang]||activationDict.en)[key] || activationDict.en[key]; }
 
-    function updateRegisterLang() {
-        const langData = activationDict[curLang] || activationDict.en;
-        document.getElementById('register-title').innerHTML = langData.title;
-        document.getElementById('register-desc').innerHTML = langData.desc;
-        document.getElementById('hint-title').innerHTML = langData.hintTitle;
-        document.getElementById('hint-step1').innerHTML = langData.step1;
-        document.getElementById('hint-step2').innerHTML = langData.step2;
-        document.getElementById('hint-step3').innerHTML = langData.step3;
-        codeInput.placeholder = langData.placeholder;
-        activateBtn.innerHTML = langData.btnText;
-        contactMeBtn.innerHTML = langData.contactBtn;
-    }
-
-    function getTranslation(key) {
-        return (activationDict[curLang] || activationDict.en)[key] || activationDict.en[key];
-    }
-
-    // --- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ---
+    // Глобальные переменные графика
     const canvas = document.getElementById('mainChart');
     const ctx = canvas.getContext('2d');
     const dpr = window.devicePixelRatio || 1;
-    let candles = [];
-    let smaData = [];
-    let showSMA = false;
-    let candleCount = 14;
-    let snowEnabled = false;
-    let curLang = 'en';
-    let cooldownActive = false;
-
-    const dict = {
-        en: { sub: "Select currency pair", an: "Analyze", wait: "Waiting...", up: "BUY ", down: "SELL ", flag: "🇬🇧" },
-        es: { sub: "Seleccione un par de divisas", an: "Analizar", wait: "Esperando...", up: "COMPRAR ", down: "VENDER ", flag: "🇪🇸" },
-        ru: { sub: "Выбери валютную пару", an: "Анализировать", wait: "Ожидание...", up: "ВВЕРХ ", down: "ВНИЗ ", flag: "🇷🇺" },
-        pl: { sub: "Wybierz parę walutową", an: "Analizuj", wait: "Oczekiwanie...", up: "W GÓRĘ ", down: "W DÓŁ ", flag: "🇵🇱" },
-        de: { sub: "Währungspaar auswählen", an: "Analysieren", wait: "Warten...", up: "KAUFEN ", down: "VERKAUFEN ", flag: "🇩🇪" },
-        fr: { sub: "Choisissez une paire de devises", an: "Analyser", wait: "Attente...", up: "ACHAT ", down: "VENTE ", flag: "🇫🇷" }
-    };
-
+    let candles = [], smaData = [], showSMA = false, candleCount = 14, snowEnabled = false, curLang = 'en', cooldownActive = false;
+    const dict = { en:{ sub:"Select currency pair", an:"Analyze", wait:"Waiting...", up:"BUY ", down:"SELL ", flag:"🇬🇧" }, es:{ sub:"Seleccione un par de divisas", an:"Analizar", wait:"Esperando...", up:"COMPRAR ", down:"VENDER ", flag:"🇪🇸" }, ru:{ sub:"Выбери валютную пару", an:"Анализировать", wait:"Ожидание...", up:"ВВЕРХ ", down:"ВНИЗ ", flag:"🇷🇺" }, pl:{ sub:"Wybierz parę walutową", an:"Analizuj", wait:"Oczekiwanie...", up:"W GÓRĘ ", down:"W DÓŁ ", flag:"🇵🇱" }, de:{ sub:"Währungspaar auswählen", an:"Analysieren", wait:"Warten...", up:"KAUFEN ", down:"VERKAUFEN ", flag:"🇩🇪" }, fr:{ sub:"Choisissez une paire de devises", an:"Analyser", wait:"Attente...", up:"ACHAT ", down:"VENTE ", flag:"🇫🇷" } };
     const startBtn = document.getElementById('start-btn');
     const langItems = document.querySelectorAll('.language-item');
     const pairsContainer = document.getElementById('pairs-container');
@@ -974,361 +972,53 @@
     const smaBtn = document.getElementById('smaBtn');
     const subHeader = document.getElementById('sub-header');
     const contactMeBtn = document.getElementById('contactMeBtn');
+    const copyNickBtn = document.getElementById('copyNickBtn');
 
-    function updateUILang() {
-        if (subHeader) subHeader.innerText = dict[curLang].sub;
-        const btnSpan = anBtn.querySelector('.btn-text');
-        if (btnSpan) btnSpan.innerText = dict[curLang].an;
-        waitMsg.innerText = dict[curLang].wait;
-        searchInput.placeholder = dict[curLang].sub;
-    }
+    // Копирование ника
+    copyNickBtn.addEventListener('click', () => {
+        const nickToCopy = "ZentixTrade";
+        navigator.clipboard.writeText(nickToCopy).then(() => {
+            const originalText = copyNickBtn.innerHTML;
+            copyNickBtn.innerHTML = "✅ Скопировано!";
+            setTimeout(() => { copyNickBtn.innerHTML = originalText; }, 1500);
+            if(registerMessageDiv) { registerMessageDiv.innerText = "📋 Ник скопирован: " + nickToCopy; registerMessageDiv.classList.add('success'); setTimeout(()=>registerMessageDiv.innerText='', 1800); }
+        }).catch(()=>{ alert("Не удалось скопировать"); });
+    });
 
-    langBtn.onclick = function() {
-        const langs = ['en', 'es', 'ru', 'pl', 'de', 'fr'];
-        let idx = langs.indexOf(curLang);
-        idx = (idx + 1) % langs.length;
-        curLang = langs[idx];
-        this.innerHTML = `${dict[curLang].flag} ${curLang.toUpperCase()}`;
-        updateUILang();
-        updateRegisterLang();
-    };
-    function toggleTheme() { document.body.classList.toggle('light-theme'); render(); }
-    themeBtn.onclick = toggleTheme;
-
-    // Снег
-    const sCanvas = document.getElementById('snow-layer');
-    const sCtx = sCanvas.getContext('2d');
-    let flakes = [], snowAnimation;
-    function setupSnow() {
-        sCanvas.width = sCanvas.parentElement.clientWidth; sCanvas.height = sCanvas.parentElement.clientHeight;
-        flakes = Array.from({length:60},()=>({ x:Math.random()*sCanvas.width, y:Math.random()*sCanvas.height, r:Math.random()*3+1, d:Math.random()*1+0.5, angle:Math.random()*360 }));
-        if(snowAnimation) cancelAnimationFrame(snowAnimation);
-        drawSnow();
-    }
-    function drawSnow() {
-        if(!snowEnabled) { sCtx.clearRect(0,0,sCanvas.width,sCanvas.height); snowAnimation=requestAnimationFrame(drawSnow); return; }
-        sCtx.clearRect(0,0,sCanvas.width,sCanvas.height); sCtx.fillStyle="rgba(255,255,255,0.6)";
-        flakes.forEach(f=>{ sCtx.save(); sCtx.translate(f.x,f.y); sCtx.rotate(f.angle*Math.PI/180); sCtx.beginPath(); sCtx.arc(0,0,f.r,0,Math.PI*2); sCtx.fill(); sCtx.restore();
-            f.y+=f.d; f.x+=Math.sin(f.angle)*0.2; if(f.y>sCanvas.height) { f.y=-5; f.x=Math.random()*sCanvas.width; } if(f.x>sCanvas.width) f.x=0; if(f.x<0) f.x=sCanvas.width;
-        }); snowAnimation=requestAnimationFrame(drawSnow);
-    }
-    function toggleSnow() { snowEnabled = !snowEnabled; snowToggle.innerText = snowEnabled ? '❄️' : '☃️'; }
-    snowToggle.onclick = toggleSnow;
+    function updateUILang() { if(subHeader) subHeader.innerText = dict[curLang].sub; anBtn.querySelector('.btn-text').innerText = dict[curLang].an; waitMsg.innerText = dict[curLang].wait; searchInput.placeholder = dict[curLang].sub; }
+    langBtn.onclick = function() { const langs=['en','es','ru','pl','de','fr']; let idx=langs.indexOf(curLang); idx=(idx+1)%langs.length; curLang=langs[idx]; this.innerHTML=`${dict[curLang].flag} ${curLang.toUpperCase()}`; updateUILang(); updateRegisterLang(); };
+    function toggleTheme() { document.body.classList.toggle('light-theme'); render(); } themeBtn.onclick = toggleTheme;
+    // снег
+    const sCanvas = document.getElementById('snow-layer'), sCtx = sCanvas.getContext('2d'); let flakes = [], snowAnimation;
+    function setupSnow() { sCanvas.width = sCanvas.parentElement.clientWidth; sCanvas.height = sCanvas.parentElement.clientHeight; flakes = Array.from({length:60},()=>({ x:Math.random()*sCanvas.width, y:Math.random()*sCanvas.height, r:Math.random()*3+1, d:Math.random()*1+0.5, angle:Math.random()*360 })); if(snowAnimation) cancelAnimationFrame(snowAnimation); drawSnow(); }
+    function drawSnow() { if(!snowEnabled) { sCtx.clearRect(0,0,sCanvas.width,sCanvas.height); snowAnimation=requestAnimationFrame(drawSnow); return; } sCtx.clearRect(0,0,sCanvas.width,sCanvas.height); sCtx.fillStyle="rgba(255,255,255,0.6)"; flakes.forEach(f=>{ sCtx.save(); sCtx.translate(f.x,f.y); sCtx.rotate(f.angle*Math.PI/180); sCtx.beginPath(); sCtx.arc(0,0,f.r,0,Math.PI*2); sCtx.fill(); sCtx.restore(); f.y+=f.d; f.x+=Math.sin(f.angle)*0.2; if(f.y>sCanvas.height) { f.y=-5; f.x=Math.random()*sCanvas.width; } if(f.x>sCanvas.width) f.x=0; if(f.x<0) f.x=sCanvas.width; }); snowAnimation=requestAnimationFrame(drawSnow); }
+    function toggleSnow() { snowEnabled = !snowEnabled; snowToggle.innerText = snowEnabled ? '❄️' : '☃️'; } snowToggle.onclick = toggleSnow;
 
     // Пары
-    const allPairs = [
-        { name: "EUR/USD", flag: "🇪🇺🇺🇸", type: "Major" }, { name: "GBP/USD", flag: "🇬🇧🇺🇸", type: "Major" }, { name: "USD/JPY", flag: "🇺🇸🇯🇵", type: "Major" }, { name: "AUD/USD", flag: "🇦🇺🇺🇸", type: "Major" }, { name: "USD/CAD", flag: "🇺🇸🇨🇦", type: "Major" }, { name: "USD/CHF", flag: "🇺🇸🇨🇭", type: "Major" }, { name: "NZD/USD", flag: "🇳🇿🇺🇸", type: "Major" }, { name: "EUR/GBP", flag: "🇪🇺🇬🇧", type: "Cross" }, { name: "EUR/JPY", flag: "🇪🇺🇯🇵", type: "Cross" }, { name: "GBP/JPY", flag: "🇬🇧🇯🇵", type: "Cross" }, { name: "AUD/JPY", flag: "🇦🇺🇯🇵", type: "Cross" }, { name: "EUR/CAD", flag: "🇪🇺🇨🇦", type: "Cross" }, { name: "AUD/CAD", flag: "🇦🇺🇨🇦", type: "Cross" }, { name: "AUD/NZD", flag: "🇦🇺🇳🇿", type: "Cross" }, { name: "NZD/JPY", flag: "🇳🇿🇯🇵", type: "Cross" }, { name: "CAD/JPY", flag: "🇨🇦🇯🇵", type: "Cross" }, { name: "CHF/JPY", flag: "🇨🇭🇯🇵", type: "Cross" }, { name: "EUR/AUD", flag: "🇪🇺🇦🇺", type: "Cross" }, { name: "GBP/AUD", flag: "🇬🇧🇦🇺", type: "Cross" }, { name: "EUR/CHF", flag: "🇪🇺🇨🇭", type: "Cross" }, { name: "GBP/CHF", flag: "🇬🇧🇨🇭", type: "Cross" }, { name: "EUR/NZD", flag: "🇪🇺🇳🇿", type: "Cross" }, { name: "GBP/NZD", flag: "🇬🇧🇳🇿", type: "Cross" }, { name: "USD/RUB", flag: "🇺🇸🇷🇺", type: "Exotic" }, { name: "EUR/RUB", flag: "🇪🇺🇷🇺", type: "Exotic" }, { name: "USD/TRY", flag: "🇺🇸🇹🇷", type: "Exotic" }, { name: "USD/MXN", flag: "🇺🇸🇲🇽", type: "Exotic" }, { name: "USD/ZAR", flag: "🇺🇸🇿🇦", type: "Exotic" }, { name: "USD/BRL", flag: "🇺🇸🇧🇷", type: "Exotic" }, { name: "USD/INR", flag: "🇺🇸🇮🇳", type: "Exotic" }, { name: "USD/IDR", flag: "🇺🇸🇮🇩", type: "Exotic" }, { name: "USD/PHP", flag: "🇺🇸🇵🇭", type: "Exotic" }, { name: "USD/THB", flag: "🇺🇸🇹🇭", type: "Exotic" }, { name: "USD/VND", flag: "🇺🇸🇻🇳", type: "Exotic" }, { name: "EUR/USD OTC", flag: "🇪🇺🇺🇸", type: "OTC" }, { name: "GBP/USD OTC", flag: "🇬🇧🇺🇸", type: "OTC" }
-    ];
+    const allPairs = [{ name:"EUR/USD", flag:"🇪🇺🇺🇸", type:"Major" },{ name:"GBP/USD", flag:"🇬🇧🇺🇸", type:"Major" },{ name:"USD/JPY", flag:"🇺🇸🇯🇵", type:"Major" },{ name:"AUD/USD", flag:"🇦🇺🇺🇸", type:"Major" },{ name:"USD/CAD", flag:"🇺🇸🇨🇦", type:"Major" },{ name:"USD/CHF", flag:"🇺🇸🇨🇭", type:"Major" },{ name:"NZD/USD", flag:"🇳🇿🇺🇸", type:"Major" },{ name:"EUR/GBP", flag:"🇪🇺🇬🇧", type:"Cross" },{ name:"EUR/JPY", flag:"🇪🇺🇯🇵", type:"Cross" },{ name:"GBP/JPY", flag:"🇬🇧🇯🇵", type:"Cross" },{ name:"AUD/JPY", flag:"🇦🇺🇯🇵", type:"Cross" },{ name:"EUR/CAD", flag:"🇪🇺🇨🇦", type:"Cross" },{ name:"AUD/CAD", flag:"🇦🇺🇨🇦", type:"Cross" },{ name:"AUD/NZD", flag:"🇦🇺🇳🇿", type:"Cross" },{ name:"NZD/JPY", flag:"🇳🇿🇯🇵", type:"Cross" },{ name:"CAD/JPY", flag:"🇨🇦🇯🇵", type:"Cross" },{ name:"CHF/JPY", flag:"🇨🇭🇯🇵", type:"Cross" },{ name:"EUR/AUD", flag:"🇪🇺🇦🇺", type:"Cross" },{ name:"GBP/AUD", flag:"🇬🇧🇦🇺", type:"Cross" },{ name:"EUR/CHF", flag:"🇪🇺🇨🇭", type:"Cross" },{ name:"GBP/CHF", flag:"🇬🇧🇨🇭", type:"Cross" },{ name:"EUR/NZD", flag:"🇪🇺🇳🇿", type:"Cross" },{ name:"GBP/NZD", flag:"🇬🇧🇳🇿", type:"Cross" },{ name:"USD/RUB", flag:"🇺🇸🇷🇺", type:"Exotic" },{ name:"EUR/RUB", flag:"🇪🇺🇷🇺", type:"Exotic" },{ name:"USD/TRY", flag:"🇺🇸🇹🇷", type:"Exotic" },{ name:"USD/MXN", flag:"🇺🇸🇲🇽", type:"Exotic" },{ name:"USD/ZAR", flag:"🇺🇸🇿🇦", type:"Exotic" },{ name:"USD/BRL", flag:"🇺🇸🇧🇷", type:"Exotic" },{ name:"USD/INR", flag:"🇺🇸🇮🇳", type:"Exotic" },{ name:"USD/IDR", flag:"🇺🇸🇮🇩", type:"Exotic" },{ name:"USD/PHP", flag:"🇺🇸🇵🇭", type:"Exotic" },{ name:"USD/THB", flag:"🇺🇸🇹🇭", type:"Exotic" },{ name:"USD/VND", flag:"🇺🇸🇻🇳", type:"Exotic" },{ name:"EUR/USD OTC", flag:"🇪🇺🇺🇸", type:"OTC" },{ name:"GBP/USD OTC", flag:"🇬🇧🇺🇸", type:"OTC" }];
+    function renderPairs(filter=''){ const f=filter.toLowerCase(); const filtered=allPairs.filter(p=>p.name.toLowerCase().includes(f)||p.type.toLowerCase().includes(f)); pairsContainer.innerHTML=''; filtered.forEach(pair=>{ const div=document.createElement('div'); div.className='pair-option'; if(pair.name===hiddenSelect.value) div.classList.add('selected'); div.innerHTML=`<span class="pair-flag">${pair.flag}</span><span class="pair-name">${pair.name}</span><span class="pair-type">${pair.type}</span>`; div.addEventListener('click',()=>{ document.querySelectorAll('.pair-option').forEach(el=>el.classList.remove('selected')); div.classList.add('selected'); hiddenSelect.value=pair.name; searchInput.value=pair.name; changePair(); pairsContainer.style.display='none'; }); pairsContainer.appendChild(div); }); if(filtered.length===0){ const empty=document.createElement('div'); empty.className='pair-option'; empty.style.justifyContent='center'; empty.style.padding='20px'; empty.innerText='❌ Nothing found'; pairsContainer.appendChild(empty); } }
+    searchInput.addEventListener('focus',()=>{ pairsContainer.style.display='block'; }); document.addEventListener('click',(e)=>{ if(!searchInput.contains(e.target)&&!pairsContainer.contains(e.target)) pairsContainer.style.display='none'; }); searchInput.addEventListener('input',(e)=>{ renderPairs(e.target.value); if(!pairsContainer.style.display||pairsContainer.style.display==='none') pairsContainer.style.display='block'; });
 
-    function renderPairs(filter = '') {
-        const filterLower = filter.toLowerCase();
-        const filtered = allPairs.filter(p => p.name.toLowerCase().includes(filterLower) || p.type.toLowerCase().includes(filterLower));
-        pairsContainer.innerHTML = '';
-        filtered.forEach(pair => {
-            const div = document.createElement('div'); div.className = 'pair-option'; if(pair.name === hiddenSelect.value) div.classList.add('selected');
-            div.innerHTML = `<span class="pair-flag">${pair.flag}</span><span class="pair-name">${pair.name}</span><span class="pair-type">${pair.type}</span>`;
-            div.addEventListener('click', () => { 
-                document.querySelectorAll('.pair-option').forEach(el => el.classList.remove('selected')); 
-                div.classList.add('selected'); 
-                hiddenSelect.value = pair.name; 
-                searchInput.value = pair.name; 
-                changePair(); 
-                pairsContainer.style.display = 'none';
-            });
-            pairsContainer.appendChild(div);
-        });
-        if(filtered.length === 0) { const empty = document.createElement('div'); empty.className = 'pair-option'; empty.style.justifyContent = 'center'; empty.style.padding = '20px'; empty.innerText = '❌ Nothing found'; pairsContainer.appendChild(empty); }
-    }
-    searchInput.addEventListener('focus', () => { pairsContainer.style.display = 'block'; });
-    document.addEventListener('click', (e) => { if (!searchInput.contains(e.target) && !pairsContainer.contains(e.target)) pairsContainer.style.display = 'none'; });
-    searchInput.addEventListener('input', (e) => { renderPairs(e.target.value); if (!pairsContainer.style.display || pairsContainer.style.display === 'none') pairsContainer.style.display = 'block'; });
-
-    // ГРАФИК - всегда активен и рисуется, даже если доступ не активирован
-    function setupCanvas() { 
-        const rect = canvas.parentElement.getBoundingClientRect(); 
-        if(rect.width === 0 || rect.height === 0) return;
-        canvas.width = rect.width * dpr; 
-        canvas.height = rect.height * dpr; 
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.scale(dpr, dpr); 
-        canvas.style.width = rect.width + 'px'; 
-        canvas.style.height = rect.height + 'px'; 
-    }
-    
-    function initChart() { 
-        setupCanvas(); 
-        candles = []; 
-        let price = 100; 
-        for(let i=0; i<candleCount; i++) { 
-            let open = price; 
-            let close = price + (Math.random() - 0.5) * 15; 
-            candles.push({ open, close, high: Math.max(open, close)+Math.random()*5+3, low: Math.min(open, close)-Math.random()*5-3, progress:1 }); 
-            price = close; 
-        } 
-        calculateSMA(); 
-        render(); 
-    }
-    
-    function calculateSMA(period=7) { 
-        smaData = []; 
-        for(let i=period-1; i<candles.length; i++) { 
-            let sum=0; 
-            for(let j=i-period+1; j<=i; j++) sum+=candles[j].close; 
-            smaData.push({ index:i, value:sum/period }); 
-        } 
-    }
-    
-    function drawGrid(w,h,minP,maxP) { 
-        ctx.save();
-        ctx.strokeStyle = document.body.classList.contains('light-theme')?"#ccc":"#1e1e2f"; 
-        ctx.lineWidth=0.5; 
-        const levels=5; 
-        for(let i=0;i<=levels;i++){ 
-            let y=h*0.15+(h*0.7/levels)*i; 
-            ctx.beginPath(); 
-            ctx.moveTo(0,y); 
-            ctx.lineTo(w,y); 
-            ctx.stroke(); 
-            let price=maxP-(i/levels)*(maxP-minP); 
-            ctx.fillStyle= document.body.classList.contains('light-theme')?"#666":"#aaa"; 
-            ctx.font="8px 'Segoe UI'"; 
-            ctx.fillText(price.toFixed(2),5,y-2); 
-        } 
-        for(let i=1;i<candles.length;i++){ 
-            let x=(i/candles.length)*w; 
-            ctx.beginPath(); 
-            ctx.moveTo(x,0); 
-            ctx.lineTo(x,h); 
-            ctx.strokeStyle=document.body.classList.contains('light-theme')?"#ddd":"#1a1a2a"; 
-            ctx.stroke(); 
-        }
-        ctx.restore();
-    }
-    
-    function render() { 
-        if(!canvas || !ctx) return;
-        const w=canvas.width/dpr; 
-        const h=canvas.height/dpr; 
-        if(w <= 0 || h <= 0) return;
-        ctx.clearRect(0,0,w,h); 
-        if(candles.length === 0) {
-            ctx.fillStyle = "#888";
-            ctx.font = "12px sans-serif";
-            ctx.textAlign = "center";
-            ctx.fillText("Loading chart...", w/2, h/2);
-            return;
-        }
-        const allPrices=candles.flatMap(c=>[c.high,c.low]); 
-        const minP=Math.min(...allPrices); 
-        const maxP=Math.max(...allPrices); 
-        const range=(maxP-minP)||10; 
-        const getY=(p)=>h-((p-minP)/range)*(h*0.7)-(h*0.15); 
-        drawGrid(w,h,minP,maxP); 
-        const candleWidth=w/candles.length; 
-        candles.forEach((c,i)=>{ 
-            const x=i*candleWidth+(candleWidth*0.15); 
-            const isUp=c.close>=c.open; 
-            const color=isUp?'#00ff88':'#ff4d4d'; 
-            ctx.strokeStyle=color; 
-            ctx.lineWidth=1.5; 
-            ctx.beginPath(); 
-            ctx.moveTo(x+(candleWidth*0.35),getY(c.high)); 
-            ctx.lineTo(x+(candleWidth*0.35),getY(c.low)); 
-            ctx.stroke(); 
-            let openY=getY(c.open); 
-            let closeY=getY(c.close); 
-            let bodyY,bodyH; 
-            if(isUp){ 
-                let currentCloseY=openY-(openY-closeY)*c.progress; 
-                bodyY=currentCloseY; 
-                bodyH=openY-currentCloseY; 
-            } else { 
-                let currentCloseY=openY+(closeY-openY)*c.progress; 
-                bodyY=openY; 
-                bodyH=currentCloseY-openY; 
-            } 
-            if(c.progress>0&&bodyH>0.5){ 
-                ctx.fillStyle=color; 
-                let rectX=x, rectY=bodyY, rectW=candleWidth*0.7, rectH=bodyH, radius=2; 
-                ctx.beginPath(); 
-                ctx.moveTo(rectX+radius,rectY); 
-                ctx.lineTo(rectX+rectW-radius,rectY); 
-                ctx.quadraticCurveTo(rectX+rectW,rectY,rectX+rectW,rectY+radius); 
-                ctx.lineTo(rectX+rectW,rectY+rectH-radius); 
-                ctx.quadraticCurveTo(rectX+rectW,rectY+rectH,rectX+rectW-radius,rectY+rectH); 
-                ctx.lineTo(rectX+radius,rectY+rectH); 
-                ctx.quadraticCurveTo(rectX,rectY+rectH,rectX,rectY+rectH-radius); 
-                ctx.lineTo(rectX,rectY+radius); 
-                ctx.quadraticCurveTo(rectX,rectY,rectX+radius,rectY); 
-                ctx.closePath(); 
-                ctx.fill(); 
-            } 
-        }); 
-        if(showSMA&&smaData.length>1){ 
-            ctx.beginPath(); 
-            ctx.strokeStyle='#ffaa00'; 
-            ctx.lineWidth=2; 
-            smaData.forEach((pt,idx)=>{ 
-                let x=(pt.index/candles.length)*w+candleWidth/2; 
-                let y=getY(pt.value); 
-                if(idx===0) ctx.moveTo(x,y); 
-                else ctx.lineTo(x,y); 
-            }); 
-            ctx.stroke(); 
-        } 
-    }
-    
-    // Обновление свечей всегда работает (график живой)
-    setInterval(()=>{ 
-        if(candles.length === 0) return; 
-        candles.shift(); 
-        let last=candles[candles.length-1]; 
-        let nO=last.close; 
-        let nC=nO+(Math.random()-0.5)*8; 
-        let newCandle={ open:nO, close:nC, high:Math.max(nO,nC)+Math.random()*4+2, low:Math.min(nO,nC)-Math.random()*4-2, progress:0 }; 
-        candles.push(newCandle); 
-        calculateSMA(); 
-        let progress=0; 
-        function animateNew(){ 
-            progress+=0.05; 
-            newCandle.progress=Math.min(progress,1); 
-            render(); 
-            if(progress<1) requestAnimationFrame(animateNew); 
-        } 
-        animateNew(); 
-    },3000);
-    
-    function zoomIn(){ if(candleCount>5) candleCount-=2; initChart(); }
-    function zoomOut(){ if(candleCount<30) candleCount+=2; initChart(); }
-    window.zoomIn=zoomIn; window.zoomOut=zoomOut;
-    function toggleSMA(){ showSMA=!showSMA; smaBtn.classList.toggle('active',showSMA); render(); }
-    window.toggleSMA=toggleSMA;
-    canvas.addEventListener('mousemove',(e)=>{ 
-        if(!isActivated) return; 
-        const rect=canvas.getBoundingClientRect(); 
-        const scaleX=canvas.width/rect.width; 
-        const x=(e.clientX-rect.left)*scaleX/dpr; 
-        const candleWidth=(canvas.width/dpr)/candles.length; 
-        const idx=Math.floor(x/candleWidth); 
-        if(idx>=0&&idx<candles.length){ 
-            const c=candles[idx]; 
-            document.getElementById('tooltip').style.display='block'; 
-            document.getElementById('tooltip').style.left=e.pageX+10+'px'; 
-            document.getElementById('tooltip').style.top=e.pageY-20+'px'; 
-            document.getElementById('tooltip').innerHTML=`O: ${c.open.toFixed(2)} H: ${c.high.toFixed(2)} L: ${c.low.toFixed(2)} C: ${c.close.toFixed(2)}`; 
-        } else document.getElementById('tooltip').style.display='none'; 
-    });
+    // ГРАФИК (работает всегда)
+    function setupCanvas(){ const rect=canvas.parentElement.getBoundingClientRect(); if(rect.width===0||rect.height===0) return; canvas.width=rect.width*dpr; canvas.height=rect.height*dpr; ctx.setTransform(1,0,0,1,0,0); ctx.scale(dpr,dpr); canvas.style.width=rect.width+'px'; canvas.style.height=rect.height+'px'; }
+    function initChart(){ setupCanvas(); candles=[]; let price=100; for(let i=0;i<candleCount;i++){ let open=price; let close=price+(Math.random()-0.5)*15; candles.push({ open, close, high:Math.max(open,close)+Math.random()*5+3, low:Math.min(open,close)-Math.random()*5-3, progress:1 }); price=close; } calculateSMA(); render(); }
+    function calculateSMA(period=7){ smaData=[]; for(let i=period-1;i<candles.length;i++){ let sum=0; for(let j=i-period+1;j<=i;j++) sum+=candles[j].close; smaData.push({ index:i, value:sum/period }); } }
+    function drawGrid(w,h,minP,maxP){ ctx.save(); ctx.strokeStyle=document.body.classList.contains('light-theme')?"#ccc":"#1e1e2f"; ctx.lineWidth=0.5; const levels=5; for(let i=0;i<=levels;i++){ let y=h*0.15+(h*0.7/levels)*i; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); let price=maxP-(i/levels)*(maxP-minP); ctx.fillStyle=document.body.classList.contains('light-theme')?"#666":"#aaa"; ctx.font="8px 'Segoe UI'"; ctx.fillText(price.toFixed(2),5,y-2); } for(let i=1;i<candles.length;i++){ let x=(i/candles.length)*w; ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.strokeStyle=document.body.classList.contains('light-theme')?"#ddd":"#1a1a2a"; ctx.stroke(); } ctx.restore(); }
+    function render(){ const w=canvas.width/dpr, h=canvas.height/dpr; if(w<=0||h<=0) return; ctx.clearRect(0,0,w,h); if(candles.length===0){ ctx.fillStyle="#888"; ctx.font="12px sans-serif"; ctx.textAlign="center"; ctx.fillText("Loading chart...",w/2,h/2); return; } const allPrices=candles.flatMap(c=>[c.high,c.low]); const minP=Math.min(...allPrices), maxP=Math.max(...allPrices); const range=(maxP-minP)||10; const getY=p=>h-((p-minP)/range)*(h*0.7)-(h*0.15); drawGrid(w,h,minP,maxP); const candleWidth=w/candles.length; candles.forEach((c,i)=>{ const x=i*candleWidth+(candleWidth*0.15); const isUp=c.close>=c.open; const color=isUp?'#00ff88':'#ff4d4d'; ctx.strokeStyle=color; ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(x+(candleWidth*0.35),getY(c.high)); ctx.lineTo(x+(candleWidth*0.35),getY(c.low)); ctx.stroke(); let openY=getY(c.open), closeY=getY(c.close), bodyY,bodyH; if(isUp){ let currentCloseY=openY-(openY-closeY)*c.progress; bodyY=currentCloseY; bodyH=openY-currentCloseY; } else { let currentCloseY=openY+(closeY-openY)*c.progress; bodyY=openY; bodyH=currentCloseY-openY; } if(c.progress>0&&bodyH>0.5){ ctx.fillStyle=color; let rectX=x, rectY=bodyY, rectW=candleWidth*0.7, rectH=bodyH, radius=2; ctx.beginPath(); ctx.moveTo(rectX+radius,rectY); ctx.lineTo(rectX+rectW-radius,rectY); ctx.quadraticCurveTo(rectX+rectW,rectY,rectX+rectW,rectY+radius); ctx.lineTo(rectX+rectW,rectY+rectH-radius); ctx.quadraticCurveTo(rectX+rectW,rectY+rectH,rectX+rectW-radius,rectY+rectH); ctx.lineTo(rectX+radius,rectY+rectH); ctx.quadraticCurveTo(rectX,rectY+rectH,rectX,rectY+rectH-radius); ctx.lineTo(rectX,rectY+radius); ctx.quadraticCurveTo(rectX,rectY,rectX+radius,rectY); ctx.closePath(); ctx.fill(); } }); if(showSMA&&smaData.length>1){ ctx.beginPath(); ctx.strokeStyle='#ffaa00'; ctx.lineWidth=2; smaData.forEach((pt,idx)=>{ let x=(pt.index/candles.length)*w+candleWidth/2; let y=getY(pt.value); if(idx===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }); ctx.stroke(); } if(!isActivated){ ctx.globalAlpha=0.7; ctx.fillStyle=document.body.classList.contains('light-theme')?"#00000088":"#ffffff88"; ctx.fillRect(0,0,w,h); ctx.globalAlpha=1; ctx.fillStyle="#ffaa44"; ctx.font="bold 11px sans-serif"; ctx.textAlign="center"; ctx.fillText("🔐 "+dict[curLang].an+" → Activate", w/2, h/2); } }
+    setInterval(()=>{ if(candles.length===0) return; candles.shift(); let last=candles[candles.length-1]; let nO=last.close; let nC=nO+(Math.random()-0.5)*8; let newCandle={ open:nO, close:nC, high:Math.max(nO,nC)+Math.random()*4+2, low:Math.min(nO,nC)-Math.random()*4-2, progress:0 }; candles.push(newCandle); calculateSMA(); let progress=0; function animateNew(){ progress+=0.05; newCandle.progress=Math.min(progress,1); render(); if(progress<1) requestAnimationFrame(animateNew); } animateNew(); },3000);
+    function zoomIn(){ if(candleCount>5) candleCount-=2; initChart(); } function zoomOut(){ if(candleCount<30) candleCount+=2; initChart(); } window.zoomIn=zoomIn; window.zoomOut=zoomOut;
+    function toggleSMA(){ showSMA=!showSMA; smaBtn.classList.toggle('active',showSMA); render(); } window.toggleSMA=toggleSMA;
+    canvas.addEventListener('mousemove',(e)=>{ if(!isActivated) return; const rect=canvas.getBoundingClientRect(); const x=(e.clientX-rect.left)*(canvas.width/rect.width)/dpr; const candleWidth=(canvas.width/dpr)/candles.length; const idx=Math.floor(x/candleWidth); if(idx>=0&&idx<candles.length){ const c=candles[idx]; const tt=document.getElementById('tooltip'); tt.style.display='block'; tt.style.left=e.pageX+10+'px'; tt.style.top=e.pageY-20+'px'; tt.innerHTML=`O: ${c.open.toFixed(2)} H: ${c.high.toFixed(2)} L: ${c.low.toFixed(2)} C: ${c.close.toFixed(2)}`; } else document.getElementById('tooltip').style.display='none'; });
     canvas.addEventListener('mouseleave',()=>document.getElementById('tooltip').style.display='none');
-    function changePair(){ 
-        canvas.style.opacity='0.3'; 
-        setTimeout(()=>{ 
-            initChart(); 
-            canvas.style.opacity='1'; 
-            document.querySelectorAll('.pair-option').forEach(el=>{ 
-                if(el.querySelector('.pair-name')?.innerText===hiddenSelect.value) el.classList.add('selected'); 
-                else el.classList.remove('selected'); 
-            }); 
-        },500); 
-    }
-    window.changePair=changePair;
+    function changePair(){ canvas.style.opacity='0.3'; setTimeout(()=>{ initChart(); canvas.style.opacity='1'; document.querySelectorAll('.pair-option').forEach(el=>{ if(el.querySelector('.pair-name')?.innerText===hiddenSelect.value) el.classList.add('selected'); else el.classList.remove('selected'); }); },500); } window.changePair=changePair;
 
-    function startAnalysis(btn){ 
-        if(!isActivated){ showActivationModal(); return; } 
-        if(cooldownActive)return; 
-        cooldownActive=true; 
-        btn.classList.add('cooldown'); 
-        const timerOverlay=document.createElement('div'); 
-        timerOverlay.className='timer-overlay'; 
-        const circle=document.createElement('div'); 
-        circle.className='timer-circle'; 
-        const number=document.createElement('span'); 
-        number.className='timer-number'; 
-        number.innerText='5'; 
-        timerOverlay.appendChild(circle); 
-        timerOverlay.appendChild(number); 
-        btn.appendChild(timerOverlay); 
-        let timeLeft=5; 
-        const interval=setInterval(()=>{ timeLeft--; number.innerText=timeLeft; if(timeLeft<=0)clearInterval(interval); },1000); 
-        const res=document.getElementById('result'); 
-        const stat=document.getElementById('status'); 
-        res.classList.remove('visible'); 
-        stat.style.display='flex'; 
-        setTimeout(()=>{ stat.style.display='none'; res.classList.add('visible'); const isUp=Math.random()>0.5; res.style.color=isUp?'#00ff88':'#ff4d4d'; res.style.borderColor=isUp?'#00ff88':'#ff4d4d'; res.innerHTML=`${dict[curLang][isUp?'up':'down']} (${Math.floor(Math.random()*15+82)}%)`; res.style.animation='popIn 0.4s'; setTimeout(()=>res.style.animation='',400); if(window.Telegram?.WebApp?.HapticFeedback){ if(isUp) window.Telegram.WebApp.HapticFeedback.notificationOccurred('success'); else window.Telegram.WebApp.HapticFeedback.notificationOccurred('error'); window.Telegram.WebApp.HapticFeedback.impactOccurred('heavy'); } },1500); 
-        setTimeout(()=>{ clearInterval(interval); cooldownActive=false; btn.classList.remove('cooldown'); const overlay=btn.querySelector('.timer-overlay'); if(overlay)overlay.remove(); },5000); 
-    }
-    window.startAnalysis = startAnalysis;
-    
-    function selectTf(btn){ 
-        if(!isActivated){ showActivationModal(); return; }
-        document.querySelectorAll('.tf-btn').forEach(b=>b.classList.remove('active')); 
-        btn.classList.add('active'); 
-        if(window.Telegram?.WebApp?.HapticFeedback) window.Telegram.WebApp.HapticFeedback.impactOccurred('light'); 
-    }
-    window.selectTf = selectTf;
+    function startAnalysis(btn){ if(!isActivated){ showActivationModal(); return; } if(cooldownActive)return; cooldownActive=true; btn.classList.add('cooldown'); const timerOverlay=document.createElement('div'); timerOverlay.className='timer-overlay'; const circle=document.createElement('div'); circle.className='timer-circle'; const number=document.createElement('span'); number.className='timer-number'; number.innerText='5'; timerOverlay.appendChild(circle); timerOverlay.appendChild(number); btn.appendChild(timerOverlay); let timeLeft=5; const interval=setInterval(()=>{ timeLeft--; number.innerText=timeLeft; if(timeLeft<=0)clearInterval(interval); },1000); const res=document.getElementById('result'); const stat=document.getElementById('status'); res.classList.remove('visible'); stat.style.display='flex'; setTimeout(()=>{ stat.style.display='none'; res.classList.add('visible'); const isUp=Math.random()>0.5; res.style.color=isUp?'#00ff88':'#ff4d4d'; res.style.borderColor=isUp?'#00ff88':'#ff4d4d'; res.innerHTML=`${dict[curLang][isUp?'up':'down']} (${Math.floor(Math.random()*15+82)}%)`; res.style.animation='popIn 0.4s'; setTimeout(()=>res.style.animation='',400); if(window.Telegram?.WebApp?.HapticFeedback){ if(isUp) window.Telegram.WebApp.HapticFeedback.notificationOccurred('success'); else window.Telegram.WebApp.HapticFeedback.notificationOccurred('error'); window.Telegram.WebApp.HapticFeedback.impactOccurred('heavy'); } },1500); setTimeout(()=>{ clearInterval(interval); cooldownActive=false; btn.classList.remove('cooldown'); const overlay=btn.querySelector('.timer-overlay'); if(overlay)overlay.remove(); },5000); } window.startAnalysis=startAnalysis;
+    function selectTf(btn){ if(!isActivated){ showActivationModal(); return; } document.querySelectorAll('.tf-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); if(window.Telegram?.WebApp?.HapticFeedback) window.Telegram.WebApp.HapticFeedback.impactOccurred('light'); } window.selectTf=selectTf;
     if(window.Telegram?.WebApp) window.Telegram.WebApp.expand();
 
-    // ---------- СТАРТ: выбор языка, отображение графика всегда ----------
     let selectedLanguage = null;
-    langItems.forEach(item => {
-        item.addEventListener('click', () => {
-            langItems.forEach(i => i.classList.remove('selected'));
-            item.classList.add('selected');
-            selectedLanguage = item.dataset.lang;
-            startBtn.classList.add('visible');
-        });
-    });
-    
-    startBtn.addEventListener('click', () => {
-        if (!selectedLanguage) {
-            selectedLanguage = 'en';
-            const defaultItem = document.querySelector('.language-item[data-lang="en"]');
-            if(defaultItem) defaultItem.classList.add('selected');
-        }
-        curLang = selectedLanguage;
-        updateUILang();
-        updateRegisterLang();
-        langBtn.innerHTML = `${dict[curLang].flag} ${curLang.toUpperCase()}`;
-        
-        welcomeOverlay.classList.remove('visible');
-        mainApp.style.display = 'flex';
-        
-        // ВСЕГДА инициализируем график независимо от активации
-        initChart();
-        setupSnow();
-        
-        // Наполняем список пар
-        allPairs.forEach(p => { const option = document.createElement('option'); option.value = p.name; option.text = p.name; hiddenSelect.appendChild(option); });
-        if(allPairs.length > 0) { hiddenSelect.value = allPairs[0].name; searchInput.value = allPairs[0].name; }
-        renderPairs();
-        
-        // Если доступ не активирован, поверх графика рисуем лёгкую подсказку, но сам график работает
-        if(!isActivated) {
-            // Не блокируем обновление графика, просто оверлей с текстом, но это не мешает свечам.
-            // Для эстетики нарисуем полупрозрачный слой при следующем рендере (можно через setInterval, но добавим простую анимацию)
-            const overlayMsg = () => {
-                if(!isActivated && candles.length > 0) {
-                    ctx.save();
-                    ctx.globalAlpha = 0.7;
-                    ctx.fillStyle = document.body.classList.contains('light-theme') ? "#00000088" : "#ffffff88";
-                    ctx.fillRect(0, 0, canvas.width/dpr, canvas.height/dpr);
-                    ctx.globalAlpha = 1;
-                    ctx.fillStyle = "#ffaa44";
-                    ctx.font = "bold 12px sans-serif";
-                    ctx.textAlign = "center";
-                    ctx.fillText("🔐 " + dict[curLang].an + " → Activate", (canvas.width/dpr)/2, (canvas.height/dpr)/2);
-                    ctx.restore();
-                }
-            };
-            // не перекрываем полностью, но даём знать
-            const origRender = render;
-            window.render = function() {
-                origRender();
-                if(!isActivated) overlayMsg();
-            };
-            render = window.render;
-            render();
-        }
-    });
+    langItems.forEach(item=>{ item.addEventListener('click',()=>{ langItems.forEach(i=>i.classList.remove('selected')); item.classList.add('selected'); selectedLanguage=item.dataset.lang; startBtn.classList.add('visible'); }); });
+    startBtn.addEventListener('click',()=>{ if(!selectedLanguage){ selectedLanguage='en'; const def=document.querySelector('.language-item[data-lang="en"]'); if(def) def.classList.add('selected'); } curLang=selectedLanguage; updateUILang(); updateRegisterLang(); langBtn.innerHTML=`${dict[curLang].flag} ${curLang.toUpperCase()}`; welcomeOverlay.classList.remove('visible'); mainApp.style.display='flex'; initChart(); setupSnow(); allPairs.forEach(p=>{ const opt=document.createElement('option'); opt.value=p.name; opt.text=p.name; hiddenSelect.appendChild(opt); }); if(allPairs.length>0){ hiddenSelect.value=allPairs[0].name; searchInput.value=allPairs[0].name; } renderPairs(); render(); });
 </script>
 </body>
 </html>
